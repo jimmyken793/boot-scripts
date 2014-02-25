@@ -60,7 +60,7 @@ if [ -f ${mac_address} ] ; then
 	cpsw_1_mac=$(hexdump -v -e '1/1 "%02X" ":"' ${mac_address} | sed 's/.$//')
 fi
 
-if [ -a "/dev/mmcblk1"] ; then
+if [ -b "/dev/mmcblk1" ] ; then
 	gadget_partition="/dev/mmcblk1"
 else
 	unset boot_partition
