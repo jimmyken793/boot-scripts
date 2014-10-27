@@ -72,8 +72,8 @@ else
 	fi
 fi
 
-modprobe g_multi file=${gadget_partition} cdrom=0 stall=0 removable=1 nofua=1 iSerialNumber=${SERIAL_NUMBER} iManufacturer=Circuitco  iProduct=BeagleBone${BLACK} host_addr=${cpsw_1_mac}
-sudo modprobe g_multi cdrom=0 stall=0 removable=1 nofua=1 iSerialNumber=1234534 iManufacturer=Circuitco  iProduct=BeagleBone host_addr=C8:A0:30:A0:DD:68
+#modprobe g_multi file=${gadget_partition} cdrom=0 stall=0 removable=1 nofua=1 iSerialNumber=${SERIAL_NUMBER} iManufacturer=Circuitco  iProduct=BeagleBone${BLACK} host_addr=${cpsw_1_mac}
+modprobe g_multi ro=1 cdrom=0 stall=0 removable=1 nofua=1 iSerialNumber=1234534 iManufacturer=Circuitco  iProduct=BeagleBone host_addr=C8:A0:30:A0:DD:68
 
 sleep 1
 
