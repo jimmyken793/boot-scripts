@@ -26,18 +26,19 @@
 eeprom="/sys/bus/i2c/devices/0-0050/eeprom"
 
 #Flash BeagleBone Black's eeprom:
-if [ -f /boot/uboot/flash-eMMC.txt ] ; then
-	eeprom_location=$(ls /sys/devices/ocp.*/44e0b000.i2c/i2c-0/0-0050/eeprom 2> /dev/null)
-	eeprom_header=$(hexdump -e '8/1 "%c"' ${eeprom} -s 5 -n 3)
-	if [ "x${eeprom_header}" = "x335" ] ; then
-		echo "Valid EEPROM header found"
-	else
-		echo "Invalid EEPROM header detected"
-		if [ -f /opt/scripts/device/bone/bbb-eeprom.dump ] ; then
-			if [ ! "x${eeprom_location}" = "x" ] ; then
-				echo "Adding header to EEPROM"
-				dd if=/opt/scripts/device/bone/bbb-eeprom.dump of=${eeprom_location}
-			fi
+eeprom_location=$(ls /sys/devices/ocp/44e0b000.i2c/i2c-0/0-0050/eeprom 2> /dev/null)
+eeprom_header=$(hexdump -e '8/1 "%c"' ${eeprom} -s 5 -n 3)
+if [ "x${eeprom_header}" = "x335" ] ; then
+	echo "Valid EEPROM header found"
+else
+	echo "Invalid EEPROM header detected"
+	if [ -f /opt/scripts/device/bone/bbb-eeprom.dump ] ; then
+		if [ ! "x${eeprom_location}" = "x" ] ; then
+			echo "Adding header to EEPROM"
+			dd if=/opt/scripts/device/bone/bbb-eeprom.dump of=${eeprom_location}
+			mac_address=$(hexdump -v -e '1/1 "%02X" ' /proc/device-tree/ocp/ethernet@4a100000/slave@4a100200/mac-address)
+			echo -n 'A5C'| dd obs=1 seek=12 of=/sys/bus/i2c/devices/0-0050/eeprom
+			echo -n $mac_address | dd obs=1 seek=16 of=/sys/bus/i2c/devices/0-0050/eeprom
 		fi
 	fi
 fi
