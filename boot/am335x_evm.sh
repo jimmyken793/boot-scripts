@@ -56,7 +56,7 @@ if [ -f ${mac_address} ] ; then
 	cpsw_0_mac=$(hexdump -v -e '1/1 "%02X" ":"' ${mac_address} | sed 's/.$//')
 	if [ `cat /etc/hostname` = arm ] ; then
 		hostname=ky-controller-$(hexdump -v -e '1/1 "%02X" ' /proc/device-tree/ocp/ethernet@4a100000/slave@4a100200/mac-address)
-		echo $hostname > /etc/hostname 
+		echo $hostname > /etc/hostname
 		hostname $hostname
 		echo -e "127.0.0.1\t$hostname" |sudo tee -a /etc/hosts
 	fi
@@ -154,4 +154,9 @@ if [ -f /boot/uboot/resizerootfs ] || [ -f /resizerootfs ] ; then
 	rm -rf /boot/uboot/resizerootfs || true
 	rm -rf /resizerootfs || true
 fi
+
+echo 31 > /sys/class/gpio/export
+echo in > /sys/class/gpio/gpio31/direction
+echo both > /sys/class/gpio/gpio31/edge
+
 #
