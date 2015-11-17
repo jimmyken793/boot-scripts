@@ -23,25 +23,37 @@
 #Based off:
 #https://github.com/beagleboard/meta-beagleboard/blob/master/meta-beagleboard-extras/recipes-support/usb-gadget/gadget-init/g-ether-load.sh
 
-eeprom="/sys/bus/i2c/devices/0-0050/eeprom"
-
-#Flash BeagleBone Black's eeprom:
-eeprom_location=$(ls /sys/devices/ocp/44e0b000.i2c/i2c-0/0-0050/eeprom 2> /dev/null)
-eeprom_header=$(hexdump -e '8/1 "%c"' ${eeprom} -s 5 -n 3)
-if [ "x${eeprom_header}" = "x335" ] ; then
-	echo "Valid EEPROM header found"
-else
-	echo "Invalid EEPROM header detected"
-	if [ -f /opt/scripts/device/bone/bbb-eeprom.dump ] ; then
-		if [ ! "x${eeprom_location}" = "x" ] ; then
-			echo "Adding header to EEPROM"
-			dd if=/opt/scripts/device/bone/bbb-eeprom.dump of=${eeprom_location}
-			mac_address=$(hexdump -v -e '1/1 "%02X" ' /proc/device-tree/ocp/ethernet@4a100000/slave@4a100200/mac-address)
-			echo -n 'A5C'| dd obs=1 seek=12 of=/sys/bus/i2c/devices/0-0050/eeprom
-			echo -n $mac_address | dd obs=1 seek=16 of=/sys/bus/i2c/devices/0-0050/eeprom
+process_eeprom () {
+	if [ -f ${eeprom} ] ; then
+		eeprom_header=$(hexdump -e '8/1 "%c"' ${eeprom} -s 5 -n 3)
+		if [ "x${eeprom_header}" = "x335" ] ; then
+			echo "Valid EEPROM header found"
+		else
+			echo "Invalid EEPROM header detected"
+			if [ -f /opt/scripts/device/bone/bbb-eeprom.dump ] ; then
+				echo "Adding header to EEPROM"
+				dd if=/opt/scripts/device/bone/bbb-eeprom.dump of=${eeprom_location}
+				mac_address=$(hexdump -v -e '1/1 "%02X" ' /proc/device-tree/ocp/ethernet@4a100000/slave@4a100200/mac-address)
+				echo -n 'A5C'| dd obs=1 seek=12 of=/sys/bus/i2c/devices/0-0050/eeprom
+				echo -n $mac_address | dd obs=1 seek=16 of=/sys/bus/i2c/devices/0-0050/eeprom
+			fi
+		fi
+		SERIAL_NUMBER=$(hexdump -e '8/1 "%c"' ${eeprom} -n 16 | cut -b 15-16)-$(hexdump -e '8/1 "%c"' ${eeprom} -n 28 | cut -b 17-28)
+		ISBLACK=$(hexdump -e '8/1 "%c"' ${eeprom} -n 12 | cut -b 9-12)
+		PRODUCT="BeagleBone"
+		if [ "x${ISBLACK}" = "xBBBK" ] || [ "x${ISBLACK}" = "xBNLT" ] ; then
+			PRODUCT="BeagleBoneBlack"
 		fi
 	fi
-fi
+}
+
+#[PATCH (pre v8) 0/9] Add simple NVMEM Framework via regmap.
+eeprom="/sys/class/nvmem/at24-0/nvmem"
+process_eeprom()
+
+#[PATCH v8 0/9] Add simple NVMEM Framework via regmap.
+eeprom="/sys/bus/nvmem/devices/at24-0/nvmem"
+process_eeprom()
 
 SERIAL_NUMBER=$(hexdump -e '8/1 "%c"' ${eeprom} -s 14 -n 2)-$(hexdump -e '8/1 "%c"' ${eeprom} -s 16 -n 12)
 ISBLACK=$(hexdump -e '8/1 "%c"' ${eeprom} -s 8 -n 4)
@@ -54,7 +66,7 @@ fi
 mac_address="/proc/device-tree/ocp/ethernet@4a100000/slave@4a100200/mac-address"
 if [ -f ${mac_address} ] ; then
 	cpsw_0_mac=$(hexdump -v -e '1/1 "%02X" ":"' ${mac_address} | sed 's/.$//')
-	if [ `cat /etc/hostname` = arm ] ; then
+	if [ `cat /etc/hostname` = KY_ARM ] ; then
 		hostname=ky-controller-$(hexdump -v -e '1/1 "%02X" ' /proc/device-tree/ocp/ethernet@4a100000/slave@4a100200/mac-address)
 		echo $hostname > /etc/hostname
 		hostname $hostname
@@ -62,24 +74,6 @@ if [ -f ${mac_address} ] ; then
 	fi
 fi
 
-mac_address="/proc/device-tree/ocp/ethernet@4a100000/slave@4a100300/mac-address"
-if [ -f ${mac_address} ] ; then
-	cpsw_1_mac=$(hexdump -v -e '1/1 "%02X" ":"' ${mac_address} | sed 's/.$//')
-fi
-
-if [ -b "/dev/mmcblk1" ] ; then
-	gadget_partition="/dev/mmcblk1"
-else
-	unset boot_partition
-	boot_partition=$(LC_ALL=C lsblk -l | grep "/boot/uboot" | awk '{print $1}')
-	if [ "x${boot_partition}" = "x" ] ; then
-		gadget_partition="/dev/mmcblk0p1"
-	else
-		gadget_partition="/dev/${boot_partition}"
-	fi
-fi
-
-#modprobe g_multi file=${gadget_partition} cdrom=0 stall=0 removable=1 nofua=1 iSerialNumber=${SERIAL_NUMBER} iManufacturer=Circuitco  iProduct=BeagleBone${BLACK} host_addr=${cpsw_1_mac}
 modprobe g_multi ro=1 cdrom=0 stall=0 removable=1 nofua=1 iSerialNumber=1234534 iManufacturer=Circuitco  iProduct=BeagleBone host_addr=C8:A0:30:A0:DD:68
 
 sleep 1
